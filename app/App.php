@@ -43,6 +43,7 @@ class App {
 		spl_autoload_register( array( &$this, 'autoloader' ) );
 
 		$this->initActions();
+		$this->initAdminActions();
 		$this->initFilters();
 		$this->initShortcodes();
 	}
@@ -68,7 +69,12 @@ class App {
 
 		add_action( 'init', array( &$this, 'onInitPostTypes' ) );
 
-		// Metabox
+		// Freelancer metabox with name and avatar fields
+		add_action( 'add_meta_boxes_freelancer', array( &$this, 'addFreelancerMetaBox' ) );
+		add_action( 'save_post', array( &$this, 'saveFreelancerMetaboxFields' ) );
+		add_action( 'new_to_publish', array( &$this, 'saveFreelancerMetaboxFields' ) );
+
+		// Task freelancer metabox
 		add_action( 'add_meta_boxes_task', array( &$this, 'addTaskFreelancerMetaBox' ) );
 		add_action( 'save_post', array( &$this, 'saveTaskFreelancerMetaboxFields' ) );
 		add_action( 'new_to_publish', array( &$this, 'saveTaskFreelancerMetaboxFields' ) );
@@ -84,6 +90,14 @@ class App {
 		// AJAX
 		add_action( 'wp_ajax_nopriv_add_new_task', array( $this, 'ajaxAddNewTask' ) );
 		add_action( 'wp_ajax_add_new_task', array( $this, 'ajaxAddNewTask' ) );
+	}
+
+	/**
+	 * Init wp admin actions
+	 */
+	private function initAdminActions()
+	{
+		add_action( 'admin_enqueue_scripts', array( $this, 'onInitAdminScripts' ) );
 	}
 
 	/**
@@ -143,10 +157,89 @@ class App {
 			'has_archive'        => true,
 			'hierarchical'       => false,
 			'menu_position'      => null,
-			'supports'           => array( 'title', 'thumbnail' )
+			'supports'           => array( 'title' )
 		);
 
 		register_post_type( Freelancer::POST_TYPE, $args );
+	}
+
+
+	/**
+	 * Add metabox to freelancer
+	 */
+	public function addFreelancerMetaBox() {
+
+		add_meta_box(
+			'freelancer_meta_box',
+			'Information',
+			array( &$this, 'showFreelancerMetaBox' ),
+			'freelancer',
+			'normal',
+			'default'
+		);
+	}
+
+	/**
+	 * Freelancer metabox output
+	 */
+	public function showFreelancerMetaBox() {
+
+		global $post;
+
+		wp_nonce_field( basename( __FILE__ ), 'cne_freelance_nonce' );
+
+		$name = get_post_meta( $post->ID, '_freelancer_name', true );
+		$avatar = get_post_meta( $post->ID, '_freelancer_avatar', true );
+
+		$image_attributes = wp_get_attachment_image_src( $avatar, 'thumbnail' );
+
+		$display = $image_attributes ? 'inline-block' : 'none';
+		?>
+			<p class="form-group">
+				<label for="freelancer-name">Name:</label>
+				<input type="text" class="form-control" placeholder="Name" name="freelancer-name" id="freelancer-name" value="<?php echo esc_attr( $name ) ?>">
+			</p>
+
+			<p>
+				<label for="">Avatar:</label>
+				<?php if ( $image_attributes ) : ?>
+					<a href="#" class="upload_avatar_button"><img src="<?php echo $image_attributes[0] ?>" style="max-width:95%;display:block;" /></a>
+				<?php else : ?>
+					<a href="#" class="upload_avatar_button button">Upload avatar</a>
+				<?php endif; ?>
+				<input type="hidden" name="freelancer-avatar" id="freelancer-avatar" value="<?php echo esc_attr( $avatar ) ?>" />
+				<a href="#" class="remove_avatar_button" style="display:inline-block;display:<?php echo $display ?>">Remove avatar</a>
+			</p>
+		<?php
+	}
+
+	/**
+	 * Save freelancer metabox fields
+	 */
+	public function saveFreelancerMetaboxFields( $post_id ) {
+
+		if ( !isset( $_POST['cne_freelance_nonce'] ) || !wp_verify_nonce( $_POST['cne_freelance_nonce'], basename( __FILE__ ) ) ){
+			return;
+		}
+
+		if ( wp_is_post_autosave( $post_id ) ) {
+			return;
+		}
+
+		if ( 'freelance' == $_POST['post_type'] ) {
+			if ( ! current_user_can( 'edit_post', $post_id ) ){
+				return;
+			}
+		}
+
+
+		if ( isset( $_REQUEST['freelancer-name'] ) ) {
+			update_post_meta( $post_id, '_freelancer_name', sanitize_text_field( $_POST['freelancer-name'] ) );
+		}
+
+		if ( isset( $_REQUEST['freelancer-avatar'] ) ) {
+			update_post_meta( $post_id, '_freelancer_avatar', sanitize_text_field( $_POST['freelancer-avatar'] ) );
+		}
 	}
 
 
@@ -166,13 +259,13 @@ class App {
 	}
 
 	/**
-	 * Freelancer metabox output
+	 * Task freelancer metabox output
 	 */
 	public function showTaskFreelancerMetaBox() {
 
 		global $post;
 
-		wp_nonce_field( basename( __FILE__ ), 'cne_freelance_nonce' );
+		wp_nonce_field( basename( __FILE__ ), 'cne_task_freelance_nonce' );
 
 		$freelancers = new \codingninjasext\ModelFreelancers();
 		$freelancers = $freelancers->getAll();
@@ -195,11 +288,11 @@ class App {
 	}
 
 	/**
-	 * Save freelancer metabox fields
+	 * Save task freelancer metabox fields
 	 */
 	public function saveTaskFreelancerMetaboxFields( $post_id ) {
 
-		if ( !isset( $_POST['cne_freelance_nonce'] ) || !wp_verify_nonce( $_POST['cne_freelance_nonce'], basename( __FILE__ ) ) ){
+		if ( !isset( $_POST['cne_task_freelance_nonce'] ) || !wp_verify_nonce( $_POST['cne_task_freelance_nonce'], basename( __FILE__ ) ) ){
 			return;
 		}
 
@@ -435,6 +528,21 @@ class App {
 			'ajax_url' => admin_url( 'admin-ajax.php' ),
 			'nonce' => wp_create_nonce( 'cne_new_task_nonce' ),
 		));
+	}
+
+	public function onInitAdminScripts() {
+
+		if ( ! did_action( 'wp_enqueue_media' ) ) {
+			wp_enqueue_media();
+		}
+
+		wp_enqueue_script( 
+			'admin-scripts', 
+			self::$app_url.'/assets/js/admin.js', 
+			['jquery'], 
+			null, 
+			true 
+		);
 	}
 
 

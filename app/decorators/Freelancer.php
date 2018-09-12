@@ -43,7 +43,7 @@ class Freelancer
 	 */
 	public function name()
 	{
-		$name = $this->post->post_title;
+		$name = get_post_meta( $this->post->ID, '_freelancer_name', true );
 		return apply_filters ('cn_freelancer_name', $name, $this->post);
 	}
 
@@ -51,9 +51,10 @@ class Freelancer
 	 * freelancer avatar
 	 * @return string
 	 */
-	public function avatar()
+	public function avatar( $size = 'thumbnail' )
 	{
-		$avatar = get_the_post_thumbnail( $this->post );
-		return apply_filters ('cn_freelancer_avatar', $avatar, $this->post);
+		$attachment_id = get_post_meta( $this->post->ID, '_freelancer_avatar', true );
+		$avatar = wp_get_attachment_image_src( $avatar, $size );
+		return apply_filters ('cn_freelancer_avatar', $avatar[0], $this->post);
 	}
 }
