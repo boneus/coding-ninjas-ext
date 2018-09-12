@@ -69,9 +69,9 @@ class App {
 		add_action( 'init', array( &$this, 'onInitPostTypes' ) );
 
 		// Metabox
-		add_action( 'add_meta_boxes_task', array( &$this, 'addFreelancerMetaBox' ) );
-		add_action( 'save_post', array( &$this, 'saveFreelancerMetaboxFields' ) );
-		add_action( 'new_to_publish', array( &$this, 'saveFreelancerMetaboxFields' ) );
+		add_action( 'add_meta_boxes_task', array( &$this, 'addTaskFreelancerMetaBox' ) );
+		add_action( 'save_post', array( &$this, 'saveTaskFreelancerMetaboxFields' ) );
+		add_action( 'new_to_publish', array( &$this, 'saveTaskFreelancerMetaboxFields' ) );
 
 		if ( \codingninjas\App::$route == 'tasks' ) {
 
@@ -153,12 +153,12 @@ class App {
 	/**
 	 * Add freelancer metabox to task
 	 */
-	public function addFreelancerMetaBox() {
+	public function addTaskFreelancerMetaBox() {
 
 		add_meta_box(
 			'task_meta_box',
 			'Freelancer',
-			array( &$this, 'showFreelancerMetaBox' ),
+			array( &$this, 'showTaskFreelancerMetaBox' ),
 			'task',
 			'side',
 			'default'
@@ -168,7 +168,7 @@ class App {
 	/**
 	 * Freelancer metabox output
 	 */
-	public function showFreelancerMetaBox() {
+	public function showTaskFreelancerMetaBox() {
 
 		global $post;
 
@@ -197,7 +197,7 @@ class App {
 	/**
 	 * Save freelancer metabox fields
 	 */
-	public function saveFreelancerMetaboxFields( $post_id ) {
+	public function saveTaskFreelancerMetaboxFields( $post_id ) {
 
 		if ( !isset( $_POST['cne_freelance_nonce'] ) || !wp_verify_nonce( $_POST['cne_freelance_nonce'], basename( __FILE__ ) ) ){
 			return;
